@@ -1,15 +1,20 @@
 import discord
 import re
 import traceback
+import os
+from dotenv import load_dotenv
+import random
 import asyncio
 
-TOKEN = "MTE4NjE5MzgwMDM0ODA1MzU3NA.G-Kmc-.2MMQaDNQB3TL9pF881vcvk76bkqqqWZ1Zlxask"
+load_dotenv()
 
 ADD_CHANNEL_ID = 1186225608494153858
 TESTED_CHANNEL_ID = 1186225617398673408
 BAD_SITES_CHANNEL_ID = 1186228213047898142
 URL_PATTERN = re.compile(r"https?://\S+")
 MOD_ROLE_ID = 1186217822951579698
+
+COLORS = [0x00C3F4, 0xAF416F]
 
 
 class Options(discord.ui.View):
@@ -30,7 +35,7 @@ class Options(discord.ui.View):
         match = URL_PATTERN.search(url_field_value)
         link = match.group()
 
-        thread = await interaction.message.create_thread(name=link)
+        await interaction.message.create_thread(name=link)
         button.disabled = True
         button.label = "Thread Open"
         await interaction.message.edit(view=self)
@@ -65,7 +70,8 @@ class Options(discord.ui.View):
         match = URL_PATTERN.search(url_field_value)
         link = match.group()
 
-        view = RemovalReason(link=link)
+        thread = interaction.guild.get_thread(interaction.message.id)
+        view = RemovalReason(link=link, thread=thread if thread else None)
         await interaction.response.send_modal(view)
         await view.wait()
 
@@ -103,8 +109,7 @@ class TestModal(discord.ui.Modal):
         )
         embed.set_footer(text=f"Tested by {interaction.user}")
         msg = await TESTED_CHANNEL.send(embed=embed)
-        if not self.thread:
-            msg.
+        # if not self.thread
         await interaction.response.send_message(
             f"Tested link sent! {msg.jump_url}", ephemeral=True
         )
@@ -122,9 +127,10 @@ class TestModal(discord.ui.Modal):
 
 
 class RemovalReason(discord.ui.Modal):
-    def __init__(self, link):
+    def __init__(self, link, thread):
         super().__init__(title=f"Remove Link", timeout=None)
         self.link = link
+        self.thread = thread
 
     reason = discord.ui.TextInput(
         label="Reason for removal",
@@ -136,8 +142,12 @@ class RemovalReason(discord.ui.Modal):
 
     async def on_submit(self, interaction: discord.Interaction) -> None:
         BAD_CHANNEL = interaction.guild.get_channel(BAD_SITES_CHANNEL_ID)
-        embed = discord.Embed()
-        embed.add_field(name=self.link, value=self.reason, inline=False)
+        embed = discord.Embed(title=self.link)
+        embed.add_field(
+            name=self.reason,
+            value=f"Discussion: {self.thread.mention}" if self.thread else "",
+            inline=False,
+        )
         embed.set_footer(text=f"Removed by {interaction.user}")
         msg = await BAD_CHANNEL.send(embed=embed)
         await msg.add_reaction("🔼")
@@ -174,23 +184,23 @@ class Client(discord.Client):
             if urls:
                 await message.delete()
                 for url in urls:
-                    embed = discord.Embed()
+                    embed = discord.Embed(color=random.choice(COLORS))
                     embed.add_field(name="", value=f"{url}", inline=False)
                     embed.set_footer(text=f"Submitted by {message.author}")
                     msg = await message.channel.send(embed=embed, view=Options())
                     await msg.add_reaction("🔼")
                     await msg.add_reaction("🔽")
-            # else:
-            #     await message.delete()
-            #     embed = discord.Embed(color=0xED4245)
-            #     embed.add_field(
-            #         name="",
-            #         value=f"You must send a url! {message.author.mention}",
-            #         inline=False,
-            #     )
-            #     msg = await message.channel.send(embed=embed)
-            #     await asyncio.sleep(5)
-            #     await msg.delete()
+            else:
+                await message.delete()
+                embed = discord.Embed(color=0xED4245)
+                embed.add_field(
+                    name="",
+                    value=f"Your message must contain a URL! {message.author.mention}",
+                    inline=False,
+                )
+                msg = await message.channel.send(embed=embed)
+                await asyncio.sleep(3)
+                await msg.delete()
 
 
 intents = discord.Intents.default()
@@ -202,4 +212,4 @@ client = Client(
 )
 
 
-client.run(TOKEN)
+client.run(os.getenv("DISCORD_BOT_TOKEN"))
