@@ -5,6 +5,7 @@ import os
 from dotenv import load_dotenv
 import random
 import asyncio
+from discord.ext import commands
 
 load_dotenv()
 
@@ -167,7 +168,7 @@ class RemovalReason(discord.ui.Modal):
         traceback.print_exception(type(error), error, error.__traceback__)
 
 
-class Client(discord.Client):
+class Client(commands.Bot):
     async def setup_hook(self) -> None:
         self.add_view(Options())
 
