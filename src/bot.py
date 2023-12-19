@@ -169,19 +169,34 @@ class RemovalReason(discord.ui.Modal):
 
 
 class Client(commands.Bot):
+    def __init__(self) -> None:
+        intents = discord.Intents.default()
+        intents.message_content = True
+        intents.reactions = True
+
+        super().__init__(
+            command_prefix=commands.when_mentioned_or("!"),
+            activity=discord.Activity(
+                name="link submissions!", type=discord.ActivityType.watching
+            ),
+            intents=intents,
+            case_insensitive=True,
+        )
+
     async def setup_hook(self) -> None:
         self.add_view(Options())
 
     async def on_ready(self) -> None:
-        print(f"Logged in as {self.user}")
+        print(f"Logged in as {self.user} (ID: {self.user.id})")
+        print("------")
 
     async def on_message(self, message) -> None:
-        if message.author == self.user:
+        if message.author == self.user or message.author.bot:
             return
-        if message.author.bot:
-            return
+
         if message.channel.id == ADD_CHANNEL_ID:
             urls = URL_PATTERN.findall(message.content)
+
             if urls:
                 await message.delete()
                 for url in urls:
@@ -189,8 +204,8 @@ class Client(commands.Bot):
                     embed.add_field(name="", value=f"{url}", inline=False)
                     embed.set_footer(text=f"Submitted by {message.author}")
                     msg = await message.channel.send(embed=embed, view=Options())
-                    await msg.add_reaction("🔼")
-                    await msg.add_reaction("🔽")
+                    for reaction in ["🔼", "🔽"]:
+                        await msg.add_reaction(reaction)
             else:
                 await message.delete()
                 embed = discord.Embed(color=0xED4245)
@@ -204,13 +219,6 @@ class Client(commands.Bot):
                 await msg.delete()
 
 
-intents = discord.Intents.default()
-intents.message_content = True
-intents.reactions = True
-client = Client(
-    intents=intents,
-    activity=discord.Activity(name="links!", type=discord.ActivityType.watching),
-)
-
-
-client.run(os.getenv("DISCORD_BOT_TOKEN"))
+if __name__ == "__main__":
+    client = Client()
+    client.run(os.getenv("DISCORD_BOT_TOKEN"))
