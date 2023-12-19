@@ -128,7 +128,7 @@ class TestModal(discord.ui.Modal):
 
 class RemovalReason(discord.ui.Modal):
     def __init__(self, link, thread):
-        super().__init__(title=f"Remove Link", timeout=None)
+        super().__init__(title="Remove Link", timeout=None)
         self.link = link
         self.thread = thread
 
